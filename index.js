@@ -1,31 +1,33 @@
-const { app, Tray, Menu, Notification, BrowserWindow } = require('electron');
+const { app, Menu, Tray, Notification, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const url = require('url');
+const fs = require('fs');
+const querystring = require('querystring');
 
 // 保持一个对于 window 对象的全局引用，如果你不这样做，
 // 当 JavaScript 对象被垃圾回收， window 会被自动地关闭
-let win, tray;
+let win;
+let iconPath = path.join(__dirname, 'autoSign.png');
 
 function createWindow() {
   // 创建浏览器窗口。
   win = new BrowserWindow({
-    // width: 600,
-    // height: 400,
-    width: 1000,
-    height: 600,
-    resizable: true
+    width: 600,
+    height: 550,
+    resizable: false,
+    backgroundColor: '#fff',
+    icon: iconPath
   })
 
-  tray = new Tray('./public/autoSign.ico');
-  tray.setToolTip('This is my application.')
-
-  // Menu.setApplicationMenu(null);
+  Menu.setApplicationMenu(null);
 
   // 然后加载应用的 index.html。
+  let defaultData = JSON.parse(fs.readFileSync('./data/cache').toString());
   win.loadURL(url.format({
     pathname: path.join(__dirname, 'public/html/index.html'),
     protocol: 'file:',
-    slashes: true
+    slashes: true,
+    search: querystring.stringify(defaultData)
   }))
 
   // 打开开发者工具。
@@ -62,5 +64,31 @@ app.on('activate', () => {
   }
 })
 
-// 在这文件，你可以续写应用剩下主进程代码。
-// 也可以拆分成几个文件，然后用 require 导入。
+ipcMain.on('start-auto-sign', (event, data) => {
+  win.hide();
+  tray = new Tray(iconPath);
+  let contextMenu = Menu.buildFromTemplate([{
+    label: '打开主面板(停止签到)',
+    click: () => {
+      tray.destroy();
+      win.show();
+    }
+  }, {
+    label: '退出',
+    role: 'quit'
+  }]);
+  tray.setContextMenu(contextMenu);
+  tray.setToolTip('预计签到时间:' + data.time);
+  tray.displayBalloon({
+    title: '预计签到时间',
+    content: data.time
+  });
+  
+  let writeData = {}
+  writeData.username = data.isRememberUsername ? data.username : '';
+  writeData.password = data.isRememberPassword ? data.password : '';
+  fs.writeFile('./data/cache', JSON.stringify(writeData), (err) => {
+    if (err) console.log(err);
+  });
+  console.log(data);
+})

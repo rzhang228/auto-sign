@@ -8,7 +8,7 @@ body {
 }
 
 .form-line {
-  margin: 10px 0;
+  margin: 15px 0;
   padding-left: 100px;
 }
 
@@ -32,7 +32,7 @@ body {
 }
 
 #submit {
-  margin-top: 10px;
+  margin-top: 50px;
   width: 100%;
   outline: none;
 }
