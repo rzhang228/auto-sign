@@ -3,6 +3,14 @@ const { ipcRenderer } = require('electron');
 let isRememberUsername = false;
 let isRememberPassword = false;
 
+function setToastrOption() {
+  toastr.options = {
+    timeOut: '2000',
+    progressBar: true,
+    positionClass: 'toast-top-full-width'
+  }
+}
+
 function getSearchParam() {
   var url = location.search;
   var theRequest = new Object();
@@ -21,11 +29,22 @@ function addEvent() {
     let username = $('#username').val();
     let password = $('#password').val();
     let time = $('#time input').val();
-    isRememberUsername = $('#remember-username').prop('checked');
-    isRememberPassword = $('#remember-password').prop('checked');
-    ipcRenderer.send('start-auto-sign', {
-      username, password, time, isRememberUsername, isRememberPassword
-    });
+
+    ipcRenderer.once('check-account-reply', (event, res) => {
+      if (res.status) {
+        isRememberUsername = $('#remember-username').prop('checked');
+        isRememberPassword = $('#remember-password').prop('checked');
+        ipcRenderer.send('start-auto-sign', {
+          username, password, time, isRememberUsername, isRememberPassword
+        });
+      } else {
+        toastr.error(res.message)
+      }
+    })
+
+    ipcRenderer.send('check-account', {  // 前端直接用ajax请求会存在跨域问题，故抛到node端
+      username, password
+    })
   })
   $('.check-label').on('click', function (event) {
 
@@ -48,10 +67,12 @@ module.exports = {
     temorrow.setMinutes('30');
     temorrow.setSeconds('00');
     $('#time').datetimepicker({
-      format: 'YYYY-MM-DD hh:mm:ss',
+      format: 'YYYY-MM-DD HH:mm:ss',
       locale: moment.locale('zh-cn'),
-      defaultDate: temorrow
+      defaultDate: temorrow,
+      minDate: new Date
     });
+    setToastrOption();
     addEvent();
   }
 }

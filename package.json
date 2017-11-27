@@ -1,7 +1,7 @@
 {
   "name": "AutoSign",
   "version": "1.0.0",
-  "description": "",
+  "description": "something",
   "main": "index.js",
   "scripts": {
     "start": "electron .",
@@ -10,7 +10,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "electron-packager": "^10.1.0",
-    "electron-prebuilt": "^1.4.13"
+    "electron": "1.7.9",
+    "electron-packager": "^10.1.0"
   }
 }

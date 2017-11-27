@@ -3,11 +3,13 @@ const path = require('path');
 const url = require('url');
 const fs = require('fs');
 const querystring = require('querystring');
+const { sign, checkAccount } = require('./sign/sign');
 
 // 保持一个对于 window 对象的全局引用，如果你不这样做，
 // 当 JavaScript 对象被垃圾回收， window 会被自动地关闭
 let win;
-let iconPath = path.join(__dirname, 'autoSign.png');
+let iconPath = path.join(__dirname, 'icon.ico');
+let timeout;
 
 function createWindow() {
   // 创建浏览器窗口。
@@ -22,7 +24,7 @@ function createWindow() {
   Menu.setApplicationMenu(null);
 
   // 然后加载应用的 index.html。
-  let defaultData = JSON.parse(fs.readFileSync('./data/cache').toString());
+  let defaultData = JSON.parse(fs.readFileSync(path.join(__dirname, 'data/cache')).toString());
   win.loadURL(url.format({
     pathname: path.join(__dirname, 'public/html/index.html'),
     protocol: 'file:',
@@ -31,7 +33,7 @@ function createWindow() {
   }))
 
   // 打开开发者工具。
-  win.webContents.openDevTools();
+  // win.webContents.openDevTools();
 
   // 当 window 被关闭，这个事件会被触发。
   win.on('closed', () => {
@@ -64,12 +66,19 @@ app.on('activate', () => {
   }
 })
 
+ipcMain.on('check-account', (event, data) => {
+  checkAccount(data).then((res) => {
+    event.sender.send('check-account-reply', res)
+  });
+})
+
 ipcMain.on('start-auto-sign', (event, data) => {
   win.hide();
   tray = new Tray(iconPath);
   let contextMenu = Menu.buildFromTemplate([{
     label: '打开主面板(停止签到)',
     click: () => {
+      clearTimeout(timeout);
       tray.destroy();
       win.show();
     }
@@ -83,12 +92,36 @@ ipcMain.on('start-auto-sign', (event, data) => {
     title: '预计签到时间',
     content: data.time
   });
-  
+
   let writeData = {}
   writeData.username = data.isRememberUsername ? data.username : '';
   writeData.password = data.isRememberPassword ? data.password : '';
-  fs.writeFile('./data/cache', JSON.stringify(writeData), (err) => {
+  fs.writeFile(path.join(__dirname, 'data/cache'), JSON.stringify(writeData), (err) => {
     if (err) console.log(err);
   });
-  console.log(data);
+
+  let time = new Date(data.time);
+  let now = new Date();
+  let timeToNow = time.getTime() - now.getTime();
+  if (timeToNow > 0) {
+    timeout = setTimeout(() => {
+      sign(data).then((res) => {
+        if (res.status) {
+          tray.displayBalloon({
+            title: '签到成功',
+            content: res.message
+          });
+          setTimeout(() => {
+            app.quit()
+          }, 3000);
+        } else {
+          tray.displayBalloon({
+            title: '签到失败',
+            content: res.message
+          });
+          tray.setToolTip('签到失败');
+        }
+      });
+    }, timeToNow);
+  }
 })
