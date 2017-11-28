@@ -8,7 +8,7 @@ let options = {
   name: 'Auto Sign',
   out: path.join(__dirname, 'dist'),
   overwrite: true,
-  ignore: ['node_modules', 'dist', '.vscode', '.gitignore', 'package-lock.json'],
+  ignore: ['node_modules', 'dist', '.vscode', '.gitignore', 'package-lock.json', 'package.nsi', 'licence.txt'],
   icon: 'icon.ico'
 }
 
